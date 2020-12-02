@@ -37,7 +37,24 @@ def find_and_load_video_kmediod(path):
     for frame in frames:
         lab_frames.append(cv2.cvtColor(frame, cv2.COLOR_RGB2Lab))
     
-    return find_video_kmediods(lab_frames)
+    medoids = find_video_kmediods(lab_frames)
+    centers = medoids.cluster_centers_
+    labels = medoids.labels_
+
+    # only take medoids w/ 30 or more elements
+    medoids_over_30 = []
+    counts = dict()
+    for label in labels:
+        if label not in counts:
+            counts[label] = 1
+        elif counts[label] >= 30:
+            continue
+        else:
+            counts[label] += 1
+            if counts[label] >= 30:
+                over_30.append(centers[label])
+
+    return medoids_over_30
 
 
 if __name__ == '__main__':
