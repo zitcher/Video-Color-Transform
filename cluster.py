@@ -4,19 +4,25 @@ import numpy as np
 from scipy import spatial
 from tqdm import trange
 
+'''
+Expects LAB image format
+'''
 def find_video_mediod(video_frames):
     data = []
     for frame in video_frames:
-        countsr, optionsr = np.histogram(frame[:,:,0], bins=np.arange(256))
-        countsg, optionsg = np.histogram(frame[:,:,1], bins=np.arange(256))
+        countsa, optionsg = np.histogram(frame[:,:,1], bins=np.arange(256))
         countsb, optionsb = np.histogram(frame[:,:,2], bins=np.arange(256))
 
+        # get color histogram as a vector
         hist = np.concatenate((countsr, countsg, countsb), axis=0)
         data.append(hist)
 
     data = np.array(data)
+
+    # compute all pairwise distances
     pairdist = spatial.distance.cdist(data, data)
 
+    # mediod defined as element with the least distance to all others in the cluster
     best = np.argmin(np.sum(pairdist, axis=0))
     return best
 
@@ -32,13 +38,27 @@ and find a mediod for each segment.
 def find_video_kmediod(frames):
     representatives = []
     window_sz = 30
+    # separate into sections of size 30
     for i in trange(0, len(frames), window_sz):
         sub_section = frames[i:i+window_sz]
+
+        # find the mediod of each section
         representatives.append(i + find_video_mediod(sub_section))
         
     return representatives
 
+
+
+
+def find_and_load_video_kmediod(path):
+    lab_frames = []
+    frames = load_video(path)
+    for frame in frames:
+        lab_frames.append(cv2.cvtColor(frame, cv2.COLOR_RGB2Lab))
+    
+    find_video_kmediod(lab_frames)
+
+
 if __name__ == '__main__':
     vp = './data/all_results/src_models/amelie.mp4'
-    frames = load_video(vp)
-    print(find_video_kmediod(frames))
+    print(find_and_load_video_kmediod(vp))
