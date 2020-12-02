@@ -7,7 +7,6 @@ from tqdm import trange
 def find_video_mediod(video_frames):
     data = []
     for frame in video_frames:
-        print(frame.shape)
         countsr, optionsr = np.histogram(frame[:,:,0], bins=np.arange(256))
         countsg, optionsg = np.histogram(frame[:,:,1], bins=np.arange(256))
         countsb, optionsb = np.histogram(frame[:,:,2], bins=np.arange(256))
