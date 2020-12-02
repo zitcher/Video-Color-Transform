@@ -51,7 +51,7 @@ def segment_video(frames):
         sub_section = frames[i:i+window_sz]
         out_frames = out_frames + segment(sub_section)
         
-    return frames
+    return out_frames
 
 if __name__ == '__main__':
     # im = np.array(Image.open("./data/abby.jpg"))
@@ -71,9 +71,13 @@ if __name__ == '__main__':
 
     fps = 30
     video_filename = './data/out.mp4'
-    out = cv2.VideoWriter(video_filename, -1, fps, (frames[0].shape[0], frames[0].shape[1]))
+    fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+    out = cv2.VideoWriter(video_filename, fourcc, fps, (segs[0].shape[1], segs[0].shape[0]))
+    print(len(segs))
     for i in range(len(segs)):
         print(segs[i].shape)
-        out.write(segs[i])
+        seg = Image.fromarray(segs[i])
+        seg.save('./data/vid/seg_{}.png'.format(i))
+        out.write(np.stack([segs[i], segs[i], segs[i]], axis=2))
 
     
