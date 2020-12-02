@@ -3,6 +3,7 @@ from segment import load_video
 import numpy as np
 from scipy import spatial
 from tqdm import trange
+import cv2
 
 '''
 Expects LAB image format
@@ -10,11 +11,11 @@ Expects LAB image format
 def find_video_mediod(video_frames):
     data = []
     for frame in video_frames:
-        countsa, optionsg = np.histogram(frame[:,:,1], bins=np.arange(256))
+        countsa, optionsa = np.histogram(frame[:,:,1], bins=np.arange(256))
         countsb, optionsb = np.histogram(frame[:,:,2], bins=np.arange(256))
 
         # get color histogram as a vector
-        hist = np.concatenate((countsr, countsg, countsb), axis=0)
+        hist = np.concatenate((countsa, countsb), axis=0)
         data.append(hist)
 
     data = np.array(data)
