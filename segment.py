@@ -2,7 +2,7 @@ import torchvision
 from PIL import Image
 import torch
 import numpy as np
-
+import cv2 as cv
 
 def segment(image):
     with torch.no_grad():
@@ -17,10 +17,13 @@ def segment(image):
         for i in range(len(out['masks'])):
             mask = out['masks'].squeeze(1)[i].numpy()
             combined_mask = np.maximum(combined_mask, mask)
-        return (combined_mask * 255).astype(np.uint8)
+
+        combined_mask = 255*(combined_mask - np.min(combined_mask)) / np.max(combined_mask)
+
+        return combined_mask.astype(np.uint8)
 
 if __name__ == '__main__':
-    im = np.array(Image.open("./data/luke.jpg"))
+    im = np.array(Image.open("./data/abby.jpg"))
     print(im.shape)
     seg = segment(im)
     print(seg.shape)
