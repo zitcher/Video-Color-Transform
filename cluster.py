@@ -9,7 +9,9 @@ from scipy.linalg import fractional_matrix_power
 
 # L2 optimal transport distance images
 '''
-So the paper references Ferredan 2012 OPTIMAL TRANSPORT MIXING OF GAUSSIAN TEXTURE MODELS for its distance function.
+The paper references Ferredan 2012 OPTIMAL TRANSPORT MIXING OF GAUSSIAN TEXTURE MODELS 
+which has the 2*(...) term inside the trace, so I went with that. Otherwise this 
+returns a square matrix and isn't usable as a distance function.
 
 '''
 def dist(frame1, frame2):
