@@ -13,6 +13,7 @@ So the paper references Ferredan 2012 OPTIMAL TRANSPORT MIXING OF GAUSSIAN TEXTU
 
 '''
 def dist(frame1, frame2):
+    # TODO: Switch to splitting into bands and summing
     mean1, cov1 = get_band_feature(frame1)
     mean2, cov2 = get_band_feature(frame2)
     
@@ -20,7 +21,6 @@ def dist(frame1, frame2):
     md = np.linalg.norm(mean1 - mean2)**2
 
     return tr + md
-
 
 
 '''
