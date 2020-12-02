@@ -1,55 +1,33 @@
-import sklearn
+from sklearn_extra.cluster import KMedoids
 from segment import load_video
 import numpy as np
 from scipy import spatial
 from tqdm import trange
 import cv2
+from part1 import get_band_feature
+from scipy.linalg import fractional_matrix_power
+
+# L2 optimal transport distance images
+'''
+So the paper references Ferredan 2012 OPTIMAL TRANSPORT MIXING OF GAUSSIAN TEXTURE MODELS for its distance function.
+
+'''
+def dist(frame1, frame2):
+    mean1, cov1 = get_band_feature(frame1)
+    mean2, cov2 = get_band_feature(frame2)
+    
+    tr = np.trace(cov1 + cov2 - 2 * fractional_matrix_power((fractional_matrix_power(cov1, 0.5) @ cov2 @ fractional_matrix_power(cov1, 0.5)), 0.5))
+    md = np.linalg.norm(mean1 - mean2)**2
+
+    return tr + md
+
+
 
 '''
 Expects LAB image format
 '''
-def find_video_mediod(video_frames):
-    data = []
-    for frame in video_frames:
-        countsa, optionsa = np.histogram(frame[:,:,1], bins=np.arange(256))
-        countsb, optionsb = np.histogram(frame[:,:,2], bins=np.arange(256))
-
-        # get color histogram as a vector
-        hist = np.concatenate((countsa, countsb), axis=0)
-        data.append(hist)
-
-    data = np.array(data)
-
-    # compute all pairwise distances
-    pairdist = spatial.distance.cdist(data, data)
-
-    # mediod defined as element with the least distance to all others in the cluster
-    best = np.argmin(np.sum(pairdist, axis=0))
-    return best
-
-'''
-The paper states:
-In practice, we run the K-medoids algorithm on the frames of the model video 
-to produce one representative model frame for every 30 frames of the model 
-video, i.e., one for every second of a model video sampled at 30fps.
-
-I believe what this means is that we should break the video into 30 frame segments
-and find a mediod for each segment.
-'''
-def find_video_kmediod(frames):
-    representatives = []
-    window_sz = 30
-    # separate into sections of size 30
-    for i in trange(0, len(frames), window_sz):
-        sub_section = frames[i:i+window_sz]
-
-        # find the mediod of each section
-        representatives.append(i + find_video_mediod(sub_section))
-        
-    return representatives
-
-
-
+def find_video_kmediods(video_frames):
+    return KMedoids(n_clusters=video_frames//30, metric=dist).cluster_centers_
 
 def find_and_load_video_kmediod(path):
     lab_frames = []
@@ -57,9 +35,16 @@ def find_and_load_video_kmediod(path):
     for frame in frames:
         lab_frames.append(cv2.cvtColor(frame, cv2.COLOR_RGB2Lab))
     
-    find_video_kmediod(lab_frames)
+    return find_video_kmediods(lab_frames)
 
 
 if __name__ == '__main__':
     vp = './data/all_results/src_models/amelie.mp4'
-    print(find_and_load_video_kmediod(vp))
+    # print(find_and_load_video_kmediod(vp))
+
+    frames = load_video(vp)
+
+    im1 = cv2.cvtColor(frames[10], cv2.COLOR_RGB2Lab)
+    im2 = cv2.cvtColor(frames[200], cv2.COLOR_RGB2Lab)
+
+    print(dist(im1, im2))
