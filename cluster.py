@@ -52,7 +52,7 @@ def find_and_load_video_kmediod(path):
         else:
             counts[label] += 1
             if counts[label] >= 30:
-                over_30.append(centers[label])
+                medoids_over_30.append(centers[label])
 
     return medoids_over_30
 
