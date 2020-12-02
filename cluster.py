@@ -7,8 +7,13 @@ from tqdm import trange
 def find_video_mediod(video_frames):
     data = []
     for frame in video_frames:
-        counts, options = np.histogram(frame, bins=np.arange(256))
-        data.append(counts)
+        print(frame.shape)
+        countsr, optionsr = np.histogram(frame[:,:,0], bins=np.arange(256))
+        countsg, optionsg = np.histogram(frame[:,:,1], bins=np.arange(256))
+        countsb, optionsb = np.histogram(frame[:,:,2], bins=np.arange(256))
+
+        hist = np.concatenate((countsr, countsg, countsb), axis=0)
+        data.append(hist)
 
     data = np.array(data)
     pairdist = spatial.distance.cdist(data, data)
