@@ -2,7 +2,7 @@ import argparse, os
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from numpy.linalg import inv
+from numpy.linalg import inv, norm
 from scipy.linalg import sqrtm
 
 SOURCE_PATH = './data'
@@ -78,8 +78,9 @@ def luminance_transfer(input_frame, target_frame):
     for i in range(input_cdf.shape[0]):
         input2target[i] = np.min(np.argwhere(target_cdf >= input_cdf[i]))
     # Perform the inverse transfer
-    input_frame[:,:,0] = input2target[input_frame[:,:,0]]
-    return input_frame
+    output_frame = input_frame.copy()
+    output_frame[:,:,0] = input2target[input_frame[:,:,0]]
+    return output_frame
 
 def get_band_feature(frame, band_indices=None, alpha_mask=None):
     '''
@@ -181,8 +182,15 @@ def chrominance_transfer(input_frame, target_frame, multi_band=True):
     for i, ((mu_input, sig_input), (mu_target, sig_target), slice_indices, mask) in enumerate(zip(input_feats, target_feats, input_slices, slice_masks)):
         T = get_T(mu_input, sig_input, mu_target, sig_target)
         output_frame[:,:,1:] += (((input_frame[:,:,1:] - mu_input) @ T + mu_target) * mask).astype(np.uint8)
-        write_image(output_frame, 'sample_'+str(i)+'.jpg')
+        # write_image(output_frame, 'sample_'+str(i)+'.jpg')
     return output_frame
+
+def get_distance(feats1, feats2):
+    '''
+    Inputs are lists of pairs: each pair has a mean vector and a covariance matrix. 
+    '''
+    d = [np.trace(cov1+cov2)-2*sqrtm(sqrtm(cov1)@cov2@sqrtm(cov1))+norm(mu1-mu2) for (mu1, cov1), (mu2, cov2) in zip(feats1, feats2)]
+    return sum(d)
 
 # TODO: Have not touched yet
 def find_representative_frame(frames):
@@ -192,8 +200,8 @@ def main():
     '''
     Simple tests.
     '''
-    target = read_image('example.jpg')
-    img = read_image('tree.jpg')
+    target = read_image('tree.jpg')
+    img = read_image('example.jpg')
     plt.plot(np.arange(256), get_cdf(img[:,:,0]), 's-', color='g', label='original', markersize=1)
     output = luminance_transfer(img, target)
     plt.plot(np.arange(256), get_cdf(target[:,:,0]), 's-', color='r', label='target', markersize=1)
