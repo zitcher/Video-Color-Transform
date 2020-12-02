@@ -8,6 +8,14 @@ from scipy.linalg import sqrtm
 SOURCE_PATH = './data'
 OUTPUT_PATH = './output'
 
+'''
+Q: How to use get_distance as metric function?
+A: 
+feats1, _, _ = get_frame_feature(frame1) # By default the function perform band split
+feats2, _, _ = get_frame_feature(frame2)
+distance = get_distance(feats1, feats2)
+'''
+
 def read_image(path):
     '''
     read_image(path) takes a string which is the name of the input image (which should be stored in ./data), then read it with
@@ -189,7 +197,7 @@ def get_distance(feats1, feats2):
     '''
     Inputs are lists of pairs: each pair has a mean vector and a covariance matrix. 
     '''
-    d = [np.trace(cov1+cov2)-2*sqrtm(sqrtm(cov1)@cov2@sqrtm(cov1))+norm(mu1-mu2) for (mu1, cov1), (mu2, cov2) in zip(feats1, feats2)]
+    d = [np.trace(cov1+cov2-2*sqrtm(sqrtm(cov1)@cov2@sqrtm(cov1)))+norm(mu1-mu2) for (mu1, cov1), (mu2, cov2) in zip(feats1, feats2)]
     return sum(d)
 
 # TODO: Have not touched yet
@@ -200,8 +208,8 @@ def main():
     '''
     Simple tests.
     '''
-    target = read_image('tree.jpg')
-    img = read_image('example.jpg')
+    target = read_image('example.jpg')
+    img = read_image('tree.jpg')
     plt.plot(np.arange(256), get_cdf(img[:,:,0]), 's-', color='g', label='original', markersize=1)
     output = luminance_transfer(img, target)
     plt.plot(np.arange(256), get_cdf(target[:,:,0]), 's-', color='r', label='target', markersize=1)
