@@ -46,7 +46,7 @@ Expects LAB image format
 '''
 def find_video_kmediods(video_frames):
     print(video_frames.shape)
-    return KMedoids(n_clusters=len(video_frames)//30, metric=dist).fit(video_frames).cluster_centers_, video_frames.shape[1:]
+    return KMedoids(n_clusters=len(video_frames)//30, metric=dist).fit(video_frames), video_frames.shape[1:]
 
 def find_and_load_video_kmediod(path):
     lab_frames = []
@@ -69,7 +69,7 @@ def find_and_load_video_kmediod(path):
         else:
             counts[label] += 1
             if counts[label] >= 30:
-                medoids_over_30.append(np.reshape(centers[label]))
+                medoids_over_30.append(centers[label])
 
     return medoids_over_30
 
