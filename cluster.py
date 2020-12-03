@@ -4,8 +4,18 @@ import numpy as np
 from scipy import spatial
 from tqdm import trange
 import cv2
-from part1 import get_band_feature
+from part2 import get_band_feature
 from scipy.linalg import fractional_matrix_power
+
+
+def raw_dist(frame1, frame2):
+    mean1, cov1 = get_band_feature(frame1)
+    mean2, cov2 = get_band_feature(frame2)
+    
+    tr = np.trace(cov1 + cov2 - 2 * fractional_matrix_power((fractional_matrix_power(cov1, 0.5) @ cov2 @ fractional_matrix_power(cov1, 0.5)), 0.5))
+    md = np.linalg.norm(mean1 - mean2)**2
+
+    return tr + md
 
 # L2 optimal transport distance images
 '''
@@ -14,39 +24,37 @@ which has the 2*(...) term inside the trace, so I went with that. Otherwise this
 returns a square matrix and isn't usable as a distance function.
 
 '''
-def get_dist_func(shape):
-    def dist(frame1, frame2):
-        frame1 = np.reshape(frame1, shape)
-        frame2 = np.reshape(frame2, shape)
-        # TODO: Switch to splitting into bands and summing
-        mean1, cov1 = get_band_feature(frame1)
-        mean2, cov2 = get_band_feature(frame2)
-        
-        tr = np.trace(cov1 + cov2 - 2 * fractional_matrix_power((fractional_matrix_power(cov1, 0.5) @ cov2 @ fractional_matrix_power(cov1, 0.5)), 0.5))
-        md = np.linalg.norm(mean1 - mean2)**2
+def dist(stats1, stats2):
+    mean1 = stats1[:2]
+    cov1 = np.reshape(stats1[2:], (2, 2))
 
-        return tr + md
+    mean2 = stats2[:2]
+    cov2 = np.reshape(stats2[2:], (2, 2))
     
-    return dist
+    tr = np.trace(cov1 + cov2 - 2 * fractional_matrix_power((fractional_matrix_power(cov1, 0.5) @ cov2 @ fractional_matrix_power(cov1, 0.5)), 0.5))
+    md = np.linalg.norm(mean1 - mean2)**2
 
+    return tr + md
+
+
+def get_stats(frame):
+    mean, cov = get_band_feature(frame)
+    return np.concatenate((mean, np.reshape(cov, (-1))), axis=0)
 
 '''
 Expects LAB image format
 '''
 def find_video_kmediods(video_frames):
-    dist = get_dist_func((video_frames.shape[1], video_frames.shape[2], video_frames.shape[3]))
-    video_frames = np.reshape(video_frames, (video_frames.shape[0], -1))
-
     print(video_frames.shape)
-    return KMedoids(n_clusters=len(video_frames)//30, metric=dist).fit(video_frames).cluster_centers_
+    return KMedoids(n_clusters=len(video_frames)//30, metric=dist).fit(video_frames).cluster_centers_, video_frames.shape[1:]
 
 def find_and_load_video_kmediod(path):
     lab_frames = []
     frames = load_video(path)
     for frame in frames:
-        lab_frames.append(cv2.cvtColor(frame, cv2.COLOR_RGB2Lab))
+        lab_frames.append(get_stats(cv2.cvtColor(frame, cv2.COLOR_RGB2Lab)))
     
-    medoids = find_video_kmediods(np.array(lab_frames))
+    medoids, m_shape = find_video_kmediods(np.array(lab_frames))
     centers = medoids.cluster_centers_
     labels = medoids.labels_
 
@@ -61,7 +69,7 @@ def find_and_load_video_kmediod(path):
         else:
             counts[label] += 1
             if counts[label] >= 30:
-                medoids_over_30.append(centers[label])
+                medoids_over_30.append(np.reshape(centers[label]))
 
     return medoids_over_30
 
