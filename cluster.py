@@ -14,22 +14,31 @@ which has the 2*(...) term inside the trace, so I went with that. Otherwise this
 returns a square matrix and isn't usable as a distance function.
 
 '''
-def dist(frame1, frame2):
-    # TODO: Switch to splitting into bands and summing
-    mean1, cov1 = get_band_feature(frame1)
-    mean2, cov2 = get_band_feature(frame2)
-    
-    tr = np.trace(cov1 + cov2 - 2 * fractional_matrix_power((fractional_matrix_power(cov1, 0.5) @ cov2 @ fractional_matrix_power(cov1, 0.5)), 0.5))
-    md = np.linalg.norm(mean1 - mean2)**2
+def get_dist_func(shape):
+    def dist(frame1, frame2):
+        frame1 = np.reshape(frame1, shape)
+        frame2 = np.reshape(frame2, shape)
+        # TODO: Switch to splitting into bands and summing
+        mean1, cov1 = get_band_feature(frame1)
+        mean2, cov2 = get_band_feature(frame2)
+        
+        tr = np.trace(cov1 + cov2 - 2 * fractional_matrix_power((fractional_matrix_power(cov1, 0.5) @ cov2 @ fractional_matrix_power(cov1, 0.5)), 0.5))
+        md = np.linalg.norm(mean1 - mean2)**2
 
-    return tr + md
+        return tr + md
+    
+    return dist
 
 
 '''
 Expects LAB image format
 '''
 def find_video_kmediods(video_frames):
-    return KMedoids(n_clusters=video_frames//30, metric=dist).cluster_centers_
+    dist = get_dist_func((video_frames.shape[1], video_frames.shape[2], video_frames.shape[3]))
+    video_frames = np.reshape(video_frames, (video_frames.shape[0], -1))
+
+    print(video_frames.shape)
+    return KMedoids(n_clusters=len(video_frames)//30, metric=dist).fit(video_frames).cluster_centers_
 
 def find_and_load_video_kmediod(path):
     lab_frames = []
@@ -37,7 +46,7 @@ def find_and_load_video_kmediod(path):
     for frame in frames:
         lab_frames.append(cv2.cvtColor(frame, cv2.COLOR_RGB2Lab))
     
-    medoids = find_video_kmediods(lab_frames)
+    medoids = find_video_kmediods(np.array(lab_frames))
     centers = medoids.cluster_centers_
     labels = medoids.labels_
 
@@ -59,11 +68,11 @@ def find_and_load_video_kmediod(path):
 
 if __name__ == '__main__':
     vp = './data/all_results/src_models/amelie.mp4'
-    # print(find_and_load_video_kmediod(vp))
+    print(find_and_load_video_kmediod(vp))
 
-    frames = load_video(vp)
+    # frames = load_video(vp)
 
-    im1 = cv2.cvtColor(frames[10], cv2.COLOR_RGB2Lab)
-    im2 = cv2.cvtColor(frames[200], cv2.COLOR_RGB2Lab)
+    # im1 = cv2.cvtColor(frames[10], cv2.COLOR_RGB2Lab)
+    # im2 = cv2.cvtColor(frames[200], cv2.COLOR_RGB2Lab)
 
-    print(dist(im1, im2))
+    # print(dist(im1, im2))
