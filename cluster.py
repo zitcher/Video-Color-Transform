@@ -4,7 +4,7 @@ import numpy as np
 from scipy import spatial
 from tqdm import trange
 import cv2
-from part2 import get_frame_feature, get_band_feature
+from part2 import get_frame_feature, get_band_feature, chrominance_transfer
 from scipy.linalg import fractional_matrix_power
 
 
@@ -68,6 +68,30 @@ def load_lab_video(path):
         lab_frames.append(lab)
         lab_frame_stats.append(get_stats(lab))
     return lab_frame_stats, lab_frames
+
+def video_transfer(source, target):
+    lab_frame_stats, lab_frames = load_lab_video(target)
+
+    lab_frames_source_stats, lab_frame_source = load_lab_video(source)
+    mediods = video_kmediod(lab_frames_source_stats)
+
+    output = []
+    for i in range(lab_frame_stats):
+        best_dist = None
+        best_match = None
+        for center, index in mediods:
+            frame_dst = dist(center, lab_frame_stats[i])
+            if best_dist == None:
+                best_match = lab_frame_source[index]
+                best_dist = frame_dst
+                continue
+
+            if best_dist > frame_dst:
+                best_match = lab_frame_source[index]
+                best_dist = frame_dst
+        output.append(chrominance_transfer(best_match, lab_frames[i]))
+    
+    return output
 
 def video_kmediod(lab_frames):
     print("clustering")
