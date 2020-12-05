@@ -4,7 +4,7 @@ import numpy as np
 from scipy import spatial
 from tqdm import trange
 import cv2
-from part2 import get_frame_feature
+from part2 import get_frame_feature, get_band_feature
 from scipy.linalg import fractional_matrix_power
 
 
