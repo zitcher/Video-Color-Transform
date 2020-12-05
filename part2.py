@@ -4,6 +4,7 @@ import cv2
 import matplotlib.pyplot as plt
 from numpy.linalg import inv, norm
 from scipy.linalg import sqrtm
+from cluster import load_lab_video, video_kmediod, dist
 
 SOURCE_PATH = './data'
 OUTPUT_PATH = './output'
@@ -221,6 +222,30 @@ def main():
     output = chrominance_transfer(output, target)
     write_image(output, 'sample.jpg')
     return
+
+def video_transfer(source, target):
+    lab_frame_stats, lab_frames = load_lab_video(target)
+
+    lab_frames_source_stats, lab_frame_source = load_lab_video(source)
+    mediods = video_kmediod(lab_frames_source_stats)
+
+    output = []
+    for i in range(lab_frame_stats):
+        best_dist = None
+        best_match = None
+        for center, index in mediods:
+            frame_dst = dist(center, lab_frame_stats[i])
+            if best_dist == None:
+                best_match = lab_frame_source[index]
+                best_dist = frame_dst
+                continue
+
+            if best_dist > frame_dst:
+                best_match = lab_frame_source[index]
+                best_dist = frame_dst
+        output.append(chrominance_transfer(best_match, lab_frames[i]))
+    
+    return output
 
 if __name__ == '__main__':
     main()

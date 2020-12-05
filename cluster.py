@@ -4,7 +4,7 @@ import numpy as np
 from scipy import spatial
 from tqdm import trange
 import cv2
-from part2 import get_band_feature
+from part2 import get_frame_feature
 from scipy.linalg import fractional_matrix_power
 
 
@@ -25,37 +25,55 @@ returns a square matrix and isn't usable as a distance function.
 
 '''
 def dist(stats1, stats2):
-    mean1 = stats1[:2]
-    cov1 = np.reshape(stats1[2:], (2, 2))
+    dist = 0
+    for i in range(3):
+        mean1 = stats1[i:i+2]
+        cov1 = np.reshape(stats1[i+2:i+6], (2, 2))
 
-    mean2 = stats2[:2]
-    cov2 = np.reshape(stats2[2:], (2, 2))
-    
-    tr = np.trace(cov1 + cov2 - 2 * fractional_matrix_power((fractional_matrix_power(cov1, 0.5) @ cov2 @ fractional_matrix_power(cov1, 0.5)), 0.5))
-    md = np.linalg.norm(mean1 - mean2)**2
+        mean2 = stats2[i:i+2]
+        cov2 = np.reshape(stats2[i+2:i+6], (2, 2))
+        
+        tr = np.trace(cov1 + cov2 - 2 * fractional_matrix_power((fractional_matrix_power(cov1, 0.5) @ cov2 @ fractional_matrix_power(cov1, 0.5)), 0.5))
+        md = np.linalg.norm(mean1 - mean2)**2
 
-    return tr + md
+        dist += tr + md
+
+    return dist
 
 
 def get_stats(frame):
-    mean, cov = get_band_feature(frame)
-    return np.concatenate((mean, np.reshape(cov, (-1))), axis=0)
+    feats, slices, masks = get_frame_feature(frame)
 
+    stack = []
+    for mean, cov in feats:
+        stack.append(mean)
+        stack.append(np.reshape(cov, -1))
+
+    stack = np.concatenate(stack, axis=0)
+    return stack
 '''
 Expects LAB image format
 '''
 def find_video_kmediods(video_frames):
-    print(video_frames.shape)
     return KMedoids(n_clusters=len(video_frames)//30, metric=dist).fit(video_frames), video_frames.shape[1:]
 
-def find_and_load_video_kmediod(path):
+
+def load_lab_video(path):
+    lab_frame_stats = []
     lab_frames = []
     frames = load_video(path)
+    print("getting frame bands")
     for frame in frames:
-        lab_frames.append(get_stats(cv2.cvtColor(frame, cv2.COLOR_RGB2Lab)))
-    
+        lab = cv2.cvtColor(frame, cv2.COLOR_RGB2Lab)
+        lab_frames.append(lab)
+        lab_frame_stats.append(get_stats(lab))
+    return lab_frame_stats, lab_frames
+
+def video_kmediod(lab_frames):
+    print("clustering")
     medoids, m_shape = find_video_kmediods(np.array(lab_frames))
     centers = medoids.cluster_centers_
+    indices = medoids.medoid_indices_
     labels = medoids.labels_
 
     # only take medoids w/ 30 or more elements
@@ -69,14 +87,15 @@ def find_and_load_video_kmediod(path):
         else:
             counts[label] += 1
             if counts[label] >= 30:
-                medoids_over_30.append(centers[label])
+                medoids_over_30.append((centers[label], indices[label]))
 
     return medoids_over_30
 
 
 if __name__ == '__main__':
     vp = './data/all_results/src_models/amelie.mp4'
-    print(find_and_load_video_kmediod(vp))
+    lab_frame_stats, lab_frames = load_lab_video(vp)
+    print(video_kmediod(lab_frame_stats))
 
     # frames = load_video(vp)
 
