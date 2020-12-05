@@ -26,7 +26,7 @@ returns a square matrix and isn't usable as a distance function.
 '''
 def dist(stats1, stats2):
     dist = 0
-    for i in range(3):
+    for i in range(0, 18, 6):
         mean1 = stats1[i:i+2]
         cov1 = np.reshape(stats1[i+2:i+6], (2, 2))
 
