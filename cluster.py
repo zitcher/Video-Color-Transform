@@ -38,6 +38,18 @@ def load_video(video_path):
             return frames
         frames.append(frame)
 
+
+def load_lab_video(path):
+    lab_frame_stats = []
+    lab_frames = []
+    frames = load_video(path)
+    print("getting frame bands")
+    for frame in frames:
+        lab = cv2.cvtColor(frame, cv2.COLOR_RGB2Lab)
+        lab_frames.append(lab)
+        lab_frame_stats.append(get_stats(lab))
+    return lab_frame_stats, lab_frames
+
 def dist(stats1, stats2):
     dist = 0
     for i in range(0, 18, 6):
@@ -70,18 +82,6 @@ Expects LAB image format
 '''
 def find_video_kmediods(video_frames):
     return KMedoids(n_clusters=len(video_frames)//30, metric=dist).fit(video_frames), video_frames.shape[1:]
-
-
-def load_lab_video(path):
-    lab_frame_stats = []
-    lab_frames = []
-    frames = load_video(path)
-    print("getting frame bands")
-    for frame in frames:
-        lab = cv2.cvtColor(frame, cv2.COLOR_RGB2Lab)
-        lab_frames.append(lab)
-        lab_frame_stats.append(get_stats(lab))
-    return lab_frame_stats, lab_frames
 
 def video_transfer(source, target):
     lab_frame_stats, lab_frames = load_lab_video(target)
@@ -150,11 +150,37 @@ def naive_transfer(vp, target):
         output.append(out_frame)
     return output
 
-if __name__ == '__main__':
-    vp = 'source.mp4'
-    target = 'target.mp4'
+def only_background(transferred, source, segmentation):
+    out = []
+    print(len(transferred), len(source), len(segmentation))
+    for i in range(len(transferred)):
+        if i >= len(transferred) or i >= len(source) or i >= len(segmentation):
+            break
+
+        transferred_frame = transferred[i]
+        source_frame = source[i]
+        segmentation_frame = segmentation[i]
+
+        segmentation_frame = np.where(segmentation_frame > 200, 1, 0)
+
+        frm = source_frame * segmentation_frame + transferred_frame * (1 - segmentation_frame)
+        out.append(frm.astype(np.uint8))
     
-    output_naive = naive_transfer(vp, target)
+    return out
+
+def full_color_transfer(source, target, dest):
+    output = video_transfer(source, target)
+    result = None
+    size = output[0].shape[:2]
+    size = size[::-1]
+    result = cv2.VideoWriter(dest, cv2.VideoWriter_fourcc('m','p','4','v'), 30, size)
+    for frame in output:
+        frame = np.clip(cv2.cvtColor(frame, cv2.COLOR_Lab2RGB), 0, 255)
+        result.write(frame)
+    result.release()
+
+def full_naive_transfer(source, target, dest):
+    output_naive = naive_transfer(source, target)
     for frame in output_naive:
         frame = cv2.cvtColor(frame, cv2.COLOR_Lab2RGB)
         cv2.imshow('Frame', frame)
@@ -162,36 +188,39 @@ if __name__ == '__main__':
     result = None
     size = output_naive[0].shape[:2]
     size = size[::-1]
-    result = cv2.VideoWriter('naive.mp4', cv2.VideoWriter_fourcc('m','p','4','v'), 30, size)
+    result = cv2.VideoWriter(dest, cv2.VideoWriter_fourcc('m','p','4','v'), 30, size)
     for frame in output_naive:
         frame = cv2.cvtColor(frame, cv2.COLOR_Lab2RGB)
         result.write(frame)
     result.release()
-    
-    output = video_transfer(vp, target)
-    for frame in output:
-        frame = cv2.cvtColor(frame, cv2.COLOR_Lab2RGB)
-        cv2.imshow('Frame', frame)
-        cv2.waitKey(100)
+
+def background_only_transfer(source, target, seg, dest):
+    sts, taget_frames = load_lab_video(target)
+    seg = load_video(seg)
+    output = video_transfer(source, target)
+    output = only_background(output, taget_frames, seg)
+
     result = None
     size = output[0].shape[:2]
     size = size[::-1]
-    result = cv2.VideoWriter('result.mp4', cv2.VideoWriter_fourcc('m','p','4','v'), 30, size)
+    result = cv2.VideoWriter(dest, cv2.VideoWriter_fourcc('m','p','4','v'), 30, size)
     for frame in output:
-        frame = cv2.cvtColor(frame, cv2.COLOR_Lab2RGB)
+        frame = np.clip(cv2.cvtColor(frame, cv2.COLOR_Lab2RGB), 0, 255)
         result.write(frame)
     result.release()
-    
-    diff = np.stack([np.sum((frame1-frame2)**2, axis=None) for frame1, frame2 in zip(output_naive, output)])
-    im1, im2 = output_naive[np.argmax(diff)], output[np.argmax(diff)]
-    im1, im2 = cv2.cvtColor(im1, cv2.COLOR_Lab2BGR), cv2.cvtColor(im2, cv2.COLOR_Lab2BGR)
-    
-    
-    #print(video_kmediod(lab_frame_stats))
 
-    # frames = load_video(vp)
 
-    # im1 = cv2.cvtColor(frames[10], cv2.COLOR_RGB2Lab)
-    # im2 = cv2.cvtColor(frames[200], cv2.COLOR_RGB2Lab)
 
-    # print(dist(im1, im2))
+if __name__ == '__main__':
+    source = 'car.mp4'
+    target = 'transformers.mp4'
+    seg = 'transformers_segments.mp4'
+    res = 'result.mp4'
+    
+
+    # background_only_transfer(source, target, seg, res)
+    full_color_transfer(source, target, res)
+    
+    # diff = np.stack([np.sum((frame1-frame2)**2, axis=None) for frame1, frame2 in zip(output_naive, output)])
+    # im1, im2 = output_naive[np.argmax(diff)], output[np.argmax(diff)]
+    # im1, im2 = cv2.cvtColor(im1, cv2.COLOR_Lab2BGR), cv2.cvtColor(im2, cv2.COLOR_Lab2BGR)
